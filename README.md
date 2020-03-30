@@ -10,7 +10,7 @@ Use it the same as ECharts.
 npm install -S @ryc/ranking-bar
 ```
 
-**ATTENTION**, you need to ensure `d3` is avaliable and currently this repo just provides the source code version.
+**ATTENTION**, you need to ensure variable `d3` is avaliable(v5) and currently this repo just provides the source code version.
 
 ## Usage
 
@@ -25,7 +25,7 @@ Then, initialize like ECharts:
 ```js
 import { RankingBar } from '@ryc/ranking-bar'
 
-const dom = document.getElementById()
+const dom = document.getElementById('chart')
 const options = {}  // Options, see below~
 const data = []     // Data, see below~
 
