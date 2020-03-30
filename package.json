@@ -1,0 +1,14 @@
+{
+  "name": "@ryc/ranking-bar",
+  "version": "0.0.1",
+  "description": "Ranking Bar Visualization based on d3.js",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "d3"
+  ],
+  "author": "ryancui-",
+  "license": "ISC"
+}
