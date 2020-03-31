@@ -2,13 +2,19 @@
   "name": "@ryc/ranking-bar",
   "version": "0.0.1",
   "description": "Ranking Bar Visualization based on d3.js",
-  "main": "index.js",
+  "main": "lib/index.esm.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "rollup -c rollup.config.js"
   },
   "keywords": [
     "d3"
   ],
   "author": "ryancui-",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "rollup": "^2.3.0",
+    "rollup-plugin-typescript": "^1.0.1",
+    "typescript": "^3.8.3"
+  }
 }

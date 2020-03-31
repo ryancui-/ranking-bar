@@ -1,10 +1,68 @@
+import { defaultOptions, Options } from './options'
+
+declare const d3: any
+
 /**
  * RankingBar D3 Renderer
  *
- * @author ryancui_
+ * @author ryancui-
  */
 class RankingBar {
-  constructor(dom) {
+  colorMapping: object;
+  currentdate: string;
+  rate: number[];
+  currentData: any[];
+  indexList: number[];
+  time: string[];
+  tail: string;
+  date: string[];
+  name_list: string[];
+  data: any;
+  options: Options;
+  baseTime: number;
+  lastData: any[];
+  lastname: string;
+
+  svg: any;
+  auto_sort: boolean;
+  timeFormat: string;
+  reverse: boolean;
+  showMessage: boolean;
+  interval_time: number;
+  allow_up: boolean;
+  always_up: boolean;
+  big_value: boolean;
+  update_rate: number;
+  showLabel: boolean;
+  format: string;
+  grid: {
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+  };
+  isPlaying: boolean;
+  dom: HTMLElement;
+  innerWidth: number;
+  innerHeight: number;
+  xValue: Function;
+  yValue: Function;
+  g: any;
+  xAxisG: any;
+  yAxisG: any;
+  xScale: any;
+  yScale: any;
+  xAxis: any;
+  yAxis: any;
+  tooltipDom: HTMLElement;
+  tooltip: any;
+  counter: object;
+  avg: number;
+  nextIndex: number;
+  playTimer: number;
+  dateLabel: any;
+
+  constructor(dom: HTMLElement) {
     this.colorMapping = {}
     this.currentdate = undefined
     this.rate = []
@@ -37,11 +95,12 @@ class RankingBar {
 
     this.format = ',.0f'
 
-    this.grid = {}
-    this.grid.left = 300
-    this.grid.right = 80
-    this.grid.top = 0
-    this.grid.bottom = 30
+    this.grid = {
+      left: 300,
+      right: 80,
+      top: 0,
+      bottom: 30
+    }
 
     this.isPlaying = false
     this.dom = dom
@@ -58,7 +117,7 @@ class RankingBar {
    * @param options {Object}
    * @param forceUpdate {Boolean}
    */
-  render(data, options, forceUpdate) {
+  render(data: any, options: Options, forceUpdate: boolean) {
     // TODO: Currently just remove everything and render again
     if (this.svg) {
       this.svg.selectAll('*').remove()
@@ -74,21 +133,21 @@ class RankingBar {
     this.name_list = []
     this.lastData = []
 
-    this.data.forEach(element => {
+    this.data.forEach((element: any) => {
       if (this.date.indexOf(element['date']) == -1) {
         this.date.push(element['date'])
       }
     })
 
     if (this.auto_sort) {
-      this.time = this.date.sort((x, y) => new Date(x) - new Date(y))
+      this.time = this.date.sort((x, y) => (new Date(x)).getTime() - (new Date(y)).getTime())
     } else {
       this.time = this.date
     }
 
     this.data
-      .sort((a, b) => Number(b.value) - Number(a.value))
-      .forEach(e => {
+      .sort((a: { value: any; }, b: { value: any; }) => Number(b.value) - Number(a.value))
+      .forEach((e: any) => {
         if (this.name_list.indexOf(e.name) == -1) {
           this.name_list.push(e.name)
         }
@@ -100,7 +159,7 @@ class RankingBar {
     const height = this.svg.attr('height')
 
     // grid.left is calculated by max(nameList[].length)
-    const nameWidths = []
+    const nameWidths: string[] = []
     this.svg.append('g')
       .selectAll('.dummyText')
       .data(this.name_list)
@@ -186,6 +245,7 @@ class RankingBar {
       this.nextIndex++
       this.playTimer = setTimeout(execute, this.baseTime * this.interval_time + 500)
     }
+
     clearTimeout(this.playTimer)
     this.g.selectAll('.bar').remove()
     this.xAxisG.selectAll('.tick').remove()
@@ -232,9 +292,10 @@ class RankingBar {
   }
 
   _getColor(d) {
+    // TODO: Give default calor if no options.color provided
     return this.colorMapping[d.name] || (
-      this.colorMapping[d.name] = this.options.colors
-        [Object.keys(this.colorMapping).length % this.options.colors.length]
+      this.colorMapping[d.name] = this.options.color
+        [Object.keys(this.colorMapping).length % this.options.color.length]
     )
   }
 
@@ -292,9 +353,7 @@ class RankingBar {
         .attr('y', this.innerHeight)
         .style('fill', '#999')
         .style('font-size', '24px')
-        .attr('text-anchor', function () {
-          return 'end'
-        })
+        .attr('text-anchor', 'end')
         .text(this.currentdate)
 
       this.dateLabel.style('opacity', 0)
@@ -490,7 +549,7 @@ class RankingBar {
       .tween('text', function (d) {
         const self = this
         const i = d3.interpolate(
-          Number(self.textContent.replace(/\,/g, '')),
+          Number(self.textContent.replace(/,/g, '')),
           Number(d.value)
         )
 

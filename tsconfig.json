@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "module": "system",
+    "noImplicitAny": false,
+    "removeComments": true,
+    "preserveConstEnums": true
+  },
+  "typeRoots": ["./types"],
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.spec.ts"
+  ]
+}
