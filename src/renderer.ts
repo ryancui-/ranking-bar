@@ -1,4 +1,6 @@
-import { defaultOptions, Options } from './options'
+import { defaultOptions } from './options'
+import { Serie, RankingBarData, Options } from './types-def'
+
 import { deepMerge } from './utils'
 
 declare const d3: any
@@ -12,7 +14,7 @@ class RankingBar {
   colorMapping: object
   currentdate: string
   rate: number[]
-  currentData: any[]
+  currentData: Serie[]
   indexList: number[]
   time: string[]
   tail: string
@@ -25,22 +27,12 @@ class RankingBar {
   lastname: string
 
   svg: any
-  timeFormat: string
   reverse: boolean
-  showMessage: boolean
   interval_time: number
-  allow_up: boolean
-  always_up: boolean
   big_value: boolean
   update_rate: number
   showLabel: boolean
   format: string
-  grid: {
-    left: number;
-    top: number;
-    right: number;
-    bottom: number;
-  }
   isPlaying: boolean
   dom: HTMLElement
   innerWidth: number
@@ -60,8 +52,9 @@ class RankingBar {
   avg: number
   nextIndex: number
   playTimer: number
-  dateLabel: any
   isDateRanking: boolean
+
+  eventLabel: any
 
   constructor(dom: HTMLElement) {
     this.colorMapping = {}
@@ -80,13 +73,8 @@ class RankingBar {
     this.lastname = ''
 
     // Old config
-    this.timeFormat = '%Y-%m-%d'
     this.reverse = false
-    this.showMessage = false
     this.interval_time = 1.5
-
-    this.allow_up = false
-    this.always_up = false
 
     this.big_value = false
     this.update_rate = 0.5
@@ -94,13 +82,6 @@ class RankingBar {
     this.showLabel = true
 
     this.format = ',.0f'
-
-    this.grid = {
-      left: 300,
-      right: 80,
-      top: 0,
-      bottom: 30
-    }
 
     this.isPlaying = false
     this.dom = dom
@@ -117,7 +98,7 @@ class RankingBar {
    * @param options {Object}
    * @param forceUpdate {Boolean}
    */
-  render(data: any, options: Object, forceUpdate: boolean) {
+  render(options: Object, forceUpdate: boolean) {
     // TODO: Currently just remove everything and render again
     if (this.svg) {
       this.svg.selectAll('*').remove()
@@ -131,12 +112,12 @@ class RankingBar {
       this.colorMapping = {}
     }
 
-    this.data = data.slice(0)
+    this.data = this.options.data.slice(0)
     this.date = []
     this.names = []
     this.lastData = []
 
-    this.data.forEach((element: any) => {
+    this.data.forEach(element => {
       if (this.date.indexOf(element['date']) == -1) {
         this.date.push(element['date'])
       }
@@ -196,7 +177,7 @@ class RankingBar {
       .axisBottom()
       // .ticks(this.options.xAxis.tickCount)
       .tickPadding(20)
-      .tickFormat(v => this.options.xAxis.tickFormat(d3, v))
+      .tickFormat(v => this.options.xAxis.tickFormatter(d3, v))
       .tickSize(-this.innerHeight)
       .scale(this.xScale)
 
@@ -239,7 +220,11 @@ class RankingBar {
     const execute = () => {
       if (this.nextIndex >= this.time.length) {
         this.isPlaying = false
-        this.nextIndex = 0
+        // Return to the first event
+        if (this.options.init === 'start') {
+          this.currentdate = this.time[0]
+          this.getCurrentData(this.time[0])
+        }
         return
       }
 
@@ -251,10 +236,14 @@ class RankingBar {
     }
 
     clearTimeout(this.playTimer)
-    this.g.selectAll('.bar').remove()
-    this.xAxisG.selectAll('.tick').remove()
-    this.g.select('.dateLabel').remove()
-    this.nextIndex = 0
+    if (this.options.init === 'end') {
+      this.g.selectAll('.bar').remove()
+      this.xAxisG.selectAll('.tick').remove()
+      this.g.select('.eventLabel').remove()
+      this.nextIndex = 0
+    } else {
+      this.nextIndex = 1
+    }
     execute()
   }
 
@@ -347,11 +336,11 @@ class RankingBar {
       .range([this.innerHeight, 0])
 
     // TODO: .enter() is preferable
-    const dateLabel = this.g.select('.dateLabel')
-    if (dateLabel.empty()) {
-      this.dateLabel = this.g.insert('text')
+    const eventLabel = this.g.select('.eventLabel')
+    if (eventLabel.empty()) {
+      this.eventLabel = this.g.insert('text')
         .data(this.currentdate)
-        .attr('class', 'dateLabel')
+        .attr('class', 'eventLabel')
         .attr('style:visibility', 'visible')
         .attr('x', this.innerWidth - 5)
         .attr('y', this.innerHeight - 5)
@@ -361,13 +350,13 @@ class RankingBar {
         .attr('text-anchor', 'end')
         .text(this.currentdate)
 
-      this.dateLabel.style('opacity', 0)
+      this.eventLabel.style('opacity', 0)
         .transition()
         .duration(this.baseTime * this.interval_time)
         .ease(d3.easeLinear)
         .style('opacity', 1)
     } else if (this.isDateRanking) {
-      this.dateLabel
+      this.eventLabel
         .data(this.currentData)
         .transition()
         .duration(this.baseTime * this.interval_time)
@@ -384,9 +373,8 @@ class RankingBar {
           }
         })
     } else {
-      this.dateLabel.text(this.currentdate)
+      this.eventLabel.text(this.currentdate)
     }
-
 
     // xAxis ticks animations
     this.xAxisG
@@ -417,6 +405,9 @@ class RankingBar {
     } else {
       barHeight = Number(this.options.bar.height)
     }
+
+    const barValuePrefix = this.options.barValue.prefix
+    const barValuePostfix = this.options.barValue.postfix
 
     barEnter
       .append('rect')
@@ -470,7 +461,7 @@ class RankingBar {
         .attr('y', barHeight / 2)
         .attr('dy', '0.35em')
         .attr('text-anchor', 'end')
-        .text(datum => datum.name)
+        .text(datum => this.options.barLabel.formatter(d3, datum))
     }
 
     // BarInfo
@@ -491,7 +482,7 @@ class RankingBar {
         .transition()
         .delay(500 * this.interval_time / 3)
         .duration(2490 * this.interval_time / 3)
-        .text(d => d.name)
+        .text(datum => this.options.barInfo.formatter(d3, datum))
         .attr('x', d => this.xScale(this.xValue(d)) - 10)
         .attr('fill-opacity', 1)
         .attr('y', barHeight / 2)
@@ -520,12 +511,14 @@ class RankingBar {
         .tween('text', function (d) {
           const self = this
           // Start from 0.9 * d.value
-          self.textContent = d.value * 0.9
-          const i = d3.interpolate(self.textContent, Number(d.value)),
+          const prevValue = d.value * 0.9
+          self.textContent = `${barValuePrefix}${prevValue}${barValuePostfix}`
+          const i = d3.interpolate(prevValue, Number(d.value)),
             prec = (Number(d.value) + '').split('.'),
             round = prec.length > 1 ? Math.pow(10, prec[1].length) : 1
           return function (t) {
-            self.textContent = d3.format(',.0f')(Math.round(i(t) * round) / round)
+            const value = d3.format(',.0f')(Math.round(i(t) * round) / round)
+            self.textContent = `${barValuePrefix}${value}${barValuePostfix}`
           }
         })
         .attr('fill-opacity', 1)
@@ -545,40 +538,27 @@ class RankingBar {
       .style('fill', d => this._getColor(d))
       .attr('width', d => this.xScale(this.xValue(d)))
 
-    // if (this.options.barLabel.show) {
-    //   barUpdate
-    //     .select('.label')
-    //     .attr('class', 'label')
-    //     .style('fill', d => this._getColor(d))
-    //     .attr('width', d => this.xScale(this.xValue(d)))
-    // }
-
-    // barUpdate
-    //   .select('.value')
-    //   .attr('class', 'value')
-    //   .style('fill', d => this._getColor(d))
-    //   .attr('width', d => this.xScale(this.xValue(d)))
-
     // TODO: too long bar info should be avoided
     barInfo = barUpdate
       .select('.barInfo')
-      .text(d => d.name)
       .attr('x', d => this.xScale(this.xValue(d)) - 10)
 
     barUpdate
       .select('.value')
       .tween('text', function (d) {
         const self = this
-        const i = d3.interpolate(
-          Number(self.textContent.replace(/,/g, '')),
-          Number(d.value)
+        const numberText = self.textContent.substring(
+          barValuePrefix.length,
+          self.textContent.length - barValuePostfix.length
         )
+        const prevValue = Number(numberText.replace(/,/g, ''))
+        const i = d3.interpolate(prevValue, Number(d.value))
 
         const prec = (Number(d.value) + '').split('.')
         const round = prec.length > 1 ? Math.pow(10, prec[1].length) : 1
         return function (t) {
-          self.textContent =
-            d3.format(',.0f')(Math.round(i(t) * round) / round)
+          const value = d3.format(',.0f')(Math.round(i(t) * round) / round)
+          self.textContent = `${barValuePrefix}${value}${barValuePostfix}`
         }
       })
       .duration(2990 * this.interval_time / 3)
