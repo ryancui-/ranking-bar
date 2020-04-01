@@ -1,4 +1,5 @@
 import { defaultOptions, Options } from './options'
+import { deepMerge } from './utils'
 
 declare const d3: any
 
@@ -8,59 +9,59 @@ declare const d3: any
  * @author ryancui-
  */
 class RankingBar {
-  colorMapping: object;
-  currentdate: string;
-  rate: number[];
-  currentData: any[];
-  indexList: number[];
-  time: string[];
-  tail: string;
-  date: string[];
-  name_list: string[];
-  data: any;
-  options: Options;
-  baseTime: number;
-  lastData: any[];
-  lastname: string;
+  colorMapping: object
+  currentdate: string
+  rate: number[]
+  currentData: any[]
+  indexList: number[]
+  time: string[]
+  tail: string
+  date: string[]
+  names: string[]
+  data: any
+  options: Options
+  baseTime: number
+  lastData: any[]
+  lastname: string
 
-  svg: any;
-  auto_sort: boolean;
-  timeFormat: string;
-  reverse: boolean;
-  showMessage: boolean;
-  interval_time: number;
-  allow_up: boolean;
-  always_up: boolean;
-  big_value: boolean;
-  update_rate: number;
-  showLabel: boolean;
-  format: string;
+  svg: any
+  timeFormat: string
+  reverse: boolean
+  showMessage: boolean
+  interval_time: number
+  allow_up: boolean
+  always_up: boolean
+  big_value: boolean
+  update_rate: number
+  showLabel: boolean
+  format: string
   grid: {
     left: number;
     top: number;
     right: number;
     bottom: number;
-  };
-  isPlaying: boolean;
-  dom: HTMLElement;
-  innerWidth: number;
-  innerHeight: number;
-  xValue: Function;
-  yValue: Function;
-  g: any;
-  xAxisG: any;
-  yAxisG: any;
-  xScale: any;
-  yScale: any;
-  xAxis: any;
-  yAxis: any;
-  tooltipDom: HTMLElement;
-  tooltip: any;
-  counter: object;
-  avg: number;
-  nextIndex: number;
-  playTimer: number;
-  dateLabel: any;
+  }
+  isPlaying: boolean
+  dom: HTMLElement
+  innerWidth: number
+  innerHeight: number
+  xValue: Function
+  yValue: Function
+  g: any
+  xAxisG: any
+  yAxisG: any
+  xScale: any
+  yScale: any
+  xAxis: any
+  yAxis: any
+  tooltipDom: HTMLElement
+  tooltip: any
+  counter: object
+  avg: number
+  nextIndex: number
+  playTimer: number
+  dateLabel: any
+  isDateRanking: boolean
 
   constructor(dom: HTMLElement) {
     this.colorMapping = {}
@@ -71,7 +72,7 @@ class RankingBar {
     this.time = undefined
     this.tail = undefined
     this.date = []
-    this.name_list = []
+    this.names = []
     this.data = null
     this.options = null
     this.baseTime = 1000
@@ -79,7 +80,6 @@ class RankingBar {
     this.lastname = ''
 
     // Old config
-    this.auto_sort = true
     this.timeFormat = '%Y-%m-%d'
     this.reverse = false
     this.showMessage = false
@@ -117,20 +117,23 @@ class RankingBar {
    * @param options {Object}
    * @param forceUpdate {Boolean}
    */
-  render(data: any, options: Options, forceUpdate: boolean) {
+  render(data: any, options: Object, forceUpdate: boolean) {
     // TODO: Currently just remove everything and render again
     if (this.svg) {
       this.svg.selectAll('*').remove()
     }
 
+    // Merge default options
+    this.options = deepMerge(defaultOptions, options) as Options
+    console.log(this.options)
+
     if (forceUpdate) {
       this.colorMapping = {}
     }
 
-    this.options = options
     this.data = data.slice(0)
     this.date = []
-    this.name_list = []
+    this.names = []
     this.lastData = []
 
     this.data.forEach((element: any) => {
@@ -139,20 +142,17 @@ class RankingBar {
       }
     })
 
-    if (this.auto_sort) {
-      this.time = this.date.sort((x, y) => (new Date(x)).getTime() - (new Date(y)).getTime())
-    } else {
-      this.time = this.date
-    }
+    this.time = this.date
+    // Whether to enable cornerLabel date animation
+    this.isDateRanking = this.time.every(_ => /\d{4}-\d{2}-\d{2}/.test(_))
 
     this.data
-      .sort((a: { value: any; }, b: { value: any; }) => Number(b.value) - Number(a.value))
+      .sort((a, b) => Number(b.value) - Number(a.value))
       .forEach((e: any) => {
-        if (this.name_list.indexOf(e.name) == -1) {
-          this.name_list.push(e.name)
+        if (this.names.indexOf(e.name) == -1) {
+          this.names.push(e.name)
         }
       })
-    this.currentdate = this.time[0].toString()
 
     // width/height must exist is svg element
     const width = this.svg.attr('width')
@@ -162,10 +162,10 @@ class RankingBar {
     const nameWidths: string[] = []
     this.svg.append('g')
       .selectAll('.dummyText')
-      .data(this.name_list)
+      .data(this.names)
       .enter()
       .append('text')
-      .attr('font-size', '14px')
+      .attr('font-size', this.options.barLabel.fontSize + 'px')
       .text(d => d)
       .each(function () {
         nameWidths.push(this.getComputedTextLength())
@@ -174,16 +174,16 @@ class RankingBar {
 
     console.log(nameWidths)
 
-    this.grid.left = d3.max(nameWidths) + 20
-    this.innerWidth = width - this.grid.left - this.grid.right
-    this.innerHeight = height - this.grid.top - this.grid.bottom - 30
+    const paddingLeft = d3.max(nameWidths) + this.options.grid.left + 15
+    this.innerWidth = width - paddingLeft - this.options.grid.right - 15
+    this.innerHeight = height - this.options.grid.top - this.options.grid.bottom - 30
     this.xValue = d => Number(d.value)
     this.yValue = d => d.name
 
     this.g = this.svg
       .append('g')
       .attr('class', 'outer')
-      .attr('transform', `translate(${this.grid.left}, ${this.grid.top})`)
+      .attr('transform', `translate(${paddingLeft}, ${this.options.grid.top})`)
 
     this.xAxisG = this.g
       .append('g')
@@ -194,14 +194,14 @@ class RankingBar {
 
     this.xAxis = d3
       .axisBottom()
-      .ticks(10)
+      // .ticks(this.options.xAxis.tickCount)
       .tickPadding(20)
-      .tickFormat(v => d3.format('~s')(v).toUpperCase())
+      .tickFormat(v => this.options.xAxis.tickFormat(d3, v))
       .tickSize(-this.innerHeight)
       .scale(this.xScale)
 
     // Append HTML Tooltip to <svg> element
-    if (!this.tooltip && this.dom.parentElement) {
+    if (this.options.tooltip.show && !this.tooltip && this.dom.parentElement) {
       this.tooltipDom = document.createElement('div')
       this.dom.parentElement.append(this.tooltipDom)
 
@@ -218,14 +218,18 @@ class RankingBar {
         .style('border-radius', '4px')
     }
 
-    // this.tooltip = d3.select(`#tooltip_${this.uuid}`)
-
     this.counter = { value: 1 }
     this.avg = 0
 
-    // TODO: render action, now just render the last dataItem
-    this.currentdate = this.time[this.time.length - 1]
-    this.getCurrentData(this.time[this.time.length - 1])
+    switch (this.options.init) {
+      case 'start':
+        this.currentdate = this.time[0]
+        this.getCurrentData(this.time[0])
+        break
+      case 'end':
+        this.currentdate = this.time[this.time.length - 1]
+        this.getCurrentData(this.time[this.time.length - 1])
+    }
   }
 
   /**
@@ -265,24 +269,24 @@ class RankingBar {
       }
     })
 
-    this.rate['MAX_RATE'] = 0
-    this.rate['MIN_RATE'] = 1
-    this.currentData.forEach(e => {
-      this.lastData.forEach(el => {
-        if (el.name == e.name) {
-          this.rate[e.name] = Number(Number(e.value) - Number(el.value))
-        }
-      })
-      if (!this.rate[e.name]) {
-        this.rate[e.name] = this.rate['MIN_RATE']
-      }
-      if (this.rate[e.name] > this.rate['MAX_RATE']) {
-        this.rate['MAX_RATE'] = this.rate[e.name]
-      } else if (this.rate[e.name] < this.rate['MIN_RATE']) {
-        this.rate['MIN_RATE'] = this.rate[e.name]
-      }
-    })
-    this.currentData = this.currentData.slice(0, 20)
+    // this.rate['MAX_RATE'] = 0
+    // this.rate['MIN_RATE'] = 1
+    // this.currentData.forEach(e => {
+    //   this.lastData.forEach(el => {
+    //     if (el.name == e.name) {
+    //       this.rate[e.name] = Number(Number(e.value) - Number(el.value))
+    //     }
+    //   })
+    //   if (!this.rate[e.name]) {
+    //     this.rate[e.name] = this.rate['MIN_RATE']
+    //   }
+    //   if (this.rate[e.name] > this.rate['MAX_RATE']) {
+    //     this.rate['MAX_RATE'] = this.rate[e.name]
+    //   } else if (this.rate[e.name] < this.rate['MIN_RATE']) {
+    //     this.rate['MIN_RATE'] = this.rate[e.name]
+    //   }
+    // })
+    this.currentData = this.currentData.slice(0, this.options.rankingCount)
     this._dataSort()
 
     d3.transition('2')
@@ -293,8 +297,8 @@ class RankingBar {
 
   _getColor(d) {
     // TODO: Give default calor if no options.color provided
-    return this.colorMapping[d.name] || (
-      this.colorMapping[d.name] = this.options.color
+    return this.colorMapping[d.type] || (
+      this.colorMapping[d.type] = this.options.color
         [Object.keys(this.colorMapping).length % this.options.color.length]
     )
   }
@@ -349,10 +353,11 @@ class RankingBar {
         .data(this.currentdate)
         .attr('class', 'dateLabel')
         .attr('style:visibility', 'visible')
-        .attr('x', this.innerWidth)
-        .attr('y', this.innerHeight)
-        .style('fill', '#999')
-        .style('font-size', '24px')
+        .attr('x', this.innerWidth - 5)
+        .attr('y', this.innerHeight - 5)
+        .style('fill', this.options.eventLabel.fontColor)
+        .style('font-size', `${this.options.eventLabel.fontSize}px`)
+        .style('font-weight', this.options.eventLabel.fontWeight)
         .attr('text-anchor', 'end')
         .text(this.currentdate)
 
@@ -361,28 +366,27 @@ class RankingBar {
         .duration(this.baseTime * this.interval_time)
         .ease(d3.easeLinear)
         .style('opacity', 1)
+    } else if (this.isDateRanking) {
+      this.dateLabel
+        .data(this.currentData)
+        .transition()
+        .duration(this.baseTime * this.interval_time)
+        .ease(d3.easeLinear)
+        .tween('text', function (d) {
+          var self = this
+          var i = d3.interpolateDate(
+            new Date(self.textContent),
+            new Date(d.date)
+          )
+          const formatFunc = d3.timeFormat('%Y-%m-%d')
+          return function (t) {
+            self.textContent = formatFunc(i(t))
+          }
+        })
     } else {
-      if (this.auto_sort) {
-        this.dateLabel
-          .data(this.currentData)
-          .transition()
-          .duration(this.baseTime * this.interval_time)
-          .ease(d3.easeLinear)
-          .tween('text', function (d) {
-            var self = this
-            var i = d3.interpolateDate(
-              new Date(self.textContent),
-              new Date(d.date)
-            )
-            const formatFunc = d3.timeFormat('%Y-%m-%d')
-            return function (t) {
-              self.textContent = formatFunc(i(t))
-            }
-          })
-      } else {
-        this.dateLabel.text(this.currentdate)
-      }
+      this.dateLabel.text(this.currentdate)
     }
+
 
     // xAxis ticks animations
     this.xAxisG
@@ -391,10 +395,11 @@ class RankingBar {
       .ease(d3.easeLinear)
       .call(this.xAxis)
     this.xAxisG.selectAll('.tick > text')
-      .style('font-size', '12px')
-      .style('fill', '#999999')
+      .style('font-size', `${this.options.xAxis.fontSize}px`)
+      .style('font-weight', this.options.xAxis.fontWeight)
+      .style('fill', this.options.xAxis.fontColor)
 
-    this.xAxisG.selectAll('.tick > line').style('stroke', '#F0F0F0')
+    this.xAxisG.selectAll('.tick > line').style('stroke', this.options.xAxis.tickColor)
     this.xAxisG.select('.domain').remove()
 
     const bar = this.g.selectAll('.bar').data(this.currentData, d => d.name)
@@ -406,7 +411,12 @@ class RankingBar {
       .attr('class', 'bar')
       .attr('transform', d => 'translate(0, ' + (this.yScale(this.yValue(d)) + 10) + ')')
 
-    const barHeight = d3.min([this.innerHeight / (this.currentData.length + 2), 12])
+    let barHeight
+    if (this.options.bar.height === 'auto') {
+      barHeight = d3.min([this.innerHeight / (this.currentData.length + 2), 12])
+    } else {
+      barHeight = Number(this.options.bar.height)
+    }
 
     barEnter
       .append('rect')
@@ -414,8 +424,8 @@ class RankingBar {
       .attr('fill-opacity', 0)
       .attr('height', barHeight)
       .attr('y', 50)
-      .on('mouseover', d => {
-        this.tooltip.html(`${d.name} - ${d3.format(',.0f')(d.value)}`)
+      .on('mouseover', datum => {
+        this.tooltip.html(this.options.tooltip.formatter(d3, datum))
           .style('visibility', 'visible')
           .style('left', `${d3.event.offsetX + 10}px`)
           .style('top', `${d3.event.offsetY + 10}px`)
@@ -436,84 +446,94 @@ class RankingBar {
       .attr('width', d => this.xScale(this.xValue(d)))
       .attr('fill-opacity', 1)
 
-    // if (this.rounded_rectangle) {
-    //   d3.selectAll('rect').attr('rx', 13)
-    // }
+    d3.selectAll('rect').attr('rx', this.options.bar.round)
 
-    if (this.showLabel == true) {
+    if (this.options.barLabel.show) {
       barEnter
         .append('text')
         .attr('y', 50)
         .attr('fill-opacity', 0)
-        .style('font-size', '12px')
-        .style('fill', d => this._getColor(d))
+        .style('font-size', `${this.options.barLabel.fontSize}px`)
+        .style('font-weight', `${this.options.barLabel.fontWeight}`)
+        .style('fill', d =>
+          this.options.barLabel.fontColor === '='
+            ? this._getColor(d)
+            : this.options.barLabel.fontColor
+        )
         .transition('2')
         .delay(500 * this.interval_time / 3)
         .duration(2490 * this.interval_time / 3)
         .attr('fill-opacity', 1)
         .attr('y', 0)
-        .attr('class', function (d) {
-          return 'label '
-        })
+        .attr('class', 'label')
         .attr('x', -10)
         .attr('y', barHeight / 2)
         .attr('dy', '0.35em')
         .attr('text-anchor', 'end')
-        .text(function (d) {
-          return d.name
-        })
+        .text(datum => datum.name)
     }
 
     // BarInfo
-    let barInfo = barEnter
-      .append('text')
-      .attr('x', 0)
-      .attr('stroke', d => this._getColor(d))
-      .attr('fill', '#fff')
-      .attr('class', 'barInfo')
-      .attr('y', 50)
-      .attr('stroke-width', '0px')
-      .attr('fill-opacity', 0)
-      .style('font-size', '14px')
-      .style('pointer-events', 'none')
-      .transition()
-      .delay(500 * this.interval_time / 3)
-      .duration(2490 * this.interval_time / 3)
-      .text(d => d.name)
-      .attr('x', d => this.xScale(this.xValue(d)) - 10)
-      .attr('fill-opacity', 1)
-      .attr('y', barHeight / 2)
-      .attr('dy', '0.2em')
-      .attr('text-anchor', 'end')
-      .attr('stroke-width', '2px')
-      .attr('paint-order', 'stroke')
+    let barInfo
+    if (this.options.barInfo.show) {
+      barEnter
+        .append('text')
+        .attr('x', 0)
+        .attr('stroke', d => this._getColor(d))
+        .attr('fill', this.options.barInfo.fontColor)
+        .attr('class', 'barInfo')
+        .attr('y', 50)
+        .attr('stroke-width', '0px')
+        .attr('fill-opacity', 0)
+        .style('font-size', `${this.options.barInfo.fontSize}px`)
+        .style('font-weight', `${this.options.barInfo.fontWeight}`)
+        .style('pointer-events', 'none')
+        .transition()
+        .delay(500 * this.interval_time / 3)
+        .duration(2490 * this.interval_time / 3)
+        .text(d => d.name)
+        .attr('x', d => this.xScale(this.xValue(d)) - 10)
+        .attr('fill-opacity', 1)
+        .attr('y', barHeight / 2)
+        .attr('dy', '0.2em')
+        .attr('text-anchor', 'end')
+        .attr('stroke-width', '2px')
+        .attr('paint-order', 'stroke')
+    }
 
     // BarValue
-    barEnter
-      .append('text')
-      .attr('x', 0)
-      .attr('y', 50)
-      .attr('fill-opacity', 0)
-      .style('font-size', '14px')
-      .style('fill', d => this._getColor(d))
-      .transition()
-      .duration(2990 * this.interval_time / 3)
-      .tween('text', function (d) {
-        const self = this
-        // Start from 0.9 * d.value
-        self.textContent = d.value * 0.9
-        const i = d3.interpolate(self.textContent, Number(d.value)),
-          prec = (Number(d.value) + '').split('.'),
-          round = prec.length > 1 ? Math.pow(10, prec[1].length) : 1
-        return function (t) {
-          self.textContent = d3.format(',.0f')(Math.round(i(t) * round) / round)
-        }
-      })
-      .attr('fill-opacity', 1)
-      .attr('class', 'value')
-      .attr('x', d => this.xScale(this.xValue(d)) + 10)
-      .attr('y', barHeight / 2)
-      .attr('dy', '0.35em')
+    if (this.options.barValue.show) {
+      barEnter
+        .append('text')
+        .attr('x', 0)
+        .attr('y', 50)
+        .attr('fill-opacity', 0)
+        .style('font-size', `${this.options.barValue.fontSize}px`)
+        .style('font-weight', `${this.options.barValue.fontWeight}`)
+        .style('fill', d =>
+          this.options.barValue.fontColor === '='
+            ? this._getColor(d)
+            : this.options.barValue.fontColor
+        )
+        .transition()
+        .duration(2990 * this.interval_time / 3)
+        .tween('text', function (d) {
+          const self = this
+          // Start from 0.9 * d.value
+          self.textContent = d.value * 0.9
+          const i = d3.interpolate(self.textContent, Number(d.value)),
+            prec = (Number(d.value) + '').split('.'),
+            round = prec.length > 1 ? Math.pow(10, prec[1].length) : 1
+          return function (t) {
+            self.textContent = d3.format(',.0f')(Math.round(i(t) * round) / round)
+          }
+        })
+        .attr('fill-opacity', 1)
+        .attr('class', 'value')
+        .attr('x', d => this.xScale(this.xValue(d)) + 10)
+        .attr('y', barHeight / 2)
+        .attr('dy', '0.35em')
+    }
 
     let barUpdate = bar
       .transition('2')
@@ -525,20 +545,21 @@ class RankingBar {
       .style('fill', d => this._getColor(d))
       .attr('width', d => this.xScale(this.xValue(d)))
 
-    if (this.showLabel == true) {
-      barUpdate
-        .select('.label')
-        .attr('class', 'label')
-        .style('fill', d => this._getColor(d))
-        .attr('width', d => this.xScale(this.xValue(d)))
-    }
+    // if (this.options.barLabel.show) {
+    //   barUpdate
+    //     .select('.label')
+    //     .attr('class', 'label')
+    //     .style('fill', d => this._getColor(d))
+    //     .attr('width', d => this.xScale(this.xValue(d)))
+    // }
 
-    barUpdate
-      .select('.value')
-      .attr('class', 'value')
-      .style('fill', d => this._getColor(d))
-      .attr('width', d => this.xScale(this.xValue(d)))
+    // barUpdate
+    //   .select('.value')
+    //   .attr('class', 'value')
+    //   .style('fill', d => this._getColor(d))
+    //   .attr('width', d => this.xScale(this.xValue(d)))
 
+    // TODO: too long bar info should be avoided
     barInfo = barUpdate
       .select('.barInfo')
       .text(d => d.name)
@@ -553,8 +574,8 @@ class RankingBar {
           Number(d.value)
         )
 
-        const prec = (Number(d.value) + '').split('.'),
-          round = prec.length > 1 ? Math.pow(10, prec[1].length) : 1
+        const prec = (Number(d.value) + '').split('.')
+        const round = prec.length > 1 ? Math.pow(10, prec[1].length) : 1
         return function (t) {
           self.textContent =
             d3.format(',.0f')(Math.round(i(t) * round) / round)
@@ -575,13 +596,14 @@ class RankingBar {
 
     barExit
       .attr('transform', d => {
-        if (this.always_up) {
-          return 'translate(0,' + '-100' + ')'
-        }
-        if (Number(d.value) > this.avg && this.allow_up) {
-          return 'translate(0,' + '-100' + ')'
-        }
-        return 'translate(0,' + '1000' + ')'
+        // if (this.always_up) {
+        //   return 'translate(0,' + '-100' + ')'
+        // }
+        // if (Number(d.value) > this.avg && this.allow_up) {
+        //   return 'translate(0,' + '-100' + ')'
+        // }
+        // Always drop out
+        return 'translate(0, 1000)'
       })
       .remove()
       .attr('fill-opacity', 0)
@@ -590,7 +612,7 @@ class RankingBar {
       .select('rect')
       .attr('fill-opacity', 0)
       .attr('width', () => {
-        if (this.always_up) return this.xScale(0)
+        // if (this.always_up) return this.xScale(0)
         return this.xScale(this.currentData[this.currentData.length - 1]['value'])
       })
 
@@ -598,18 +620,16 @@ class RankingBar {
       .select('.value')
       .attr('fill-opacity', 0)
       .attr('x', () => {
-        if (this.always_up) return this.xScale(0)
+        // if (this.always_up) return this.xScale(0)
         return this.xScale(this.currentData[this.currentData.length - 1]['value'])
       })
 
     barExit
       .select('.barInfo')
       .attr('fill-opacity', 0)
-      .attr('stroke-width', function (d) {
-        return '0px'
-      })
+      .attr('stroke-width', '0px')
       .attr('x', () => {
-        if (this.always_up) return this.xScale(0)
+        // if (this.always_up) return this.xScale(0)
         return this.xScale(this.currentData[this.currentData.length - 1]['value'])
       })
     barExit.select('.label').attr('fill-opacity', 0)

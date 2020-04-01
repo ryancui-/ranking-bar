@@ -3,7 +3,12 @@
     "module": "system",
     "noImplicitAny": false,
     "removeComments": true,
-    "preserveConstEnums": true
+    "preserveConstEnums": true,
+    "lib": [
+      "es5",
+      "es6",
+      "dom"
+    ]
   },
   "typeRoots": ["./types"],
   "include": [
