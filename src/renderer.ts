@@ -55,10 +55,10 @@ class RankingBar {
   isDateRanking: boolean
 
   eventLabel: any
-  eventTitle: any;
-  eventDesc: any;
+  eventTitle: any
+  eventDesc: any
 
-  cbs: object;
+  cbs: object
 
   constructor(dom: HTMLElement) {
     this.colorMapping = {}
@@ -571,6 +571,46 @@ class RankingBar {
         .attr('dy', '0.35em')
     }
 
+    if (this.options.imgMapping.length > 0) {
+      barEnter
+        .append('defs')
+        .append('pattern')
+        .attr('id', d => d.name)
+        .attr('width', '100%')
+        .attr('height', '100%')
+        .append('image')
+        .attr('x', '0')
+        .attr('y', '0')
+        .attr('width', barHeight * 2)
+        .attr('height', barHeight * 2)
+        .attr('href', d => {
+          const mapping = this.options.imgMapping.find(_ => _.name === d.name)
+          return mapping ? mapping.img : ''
+        })
+      barEnter
+        .append('circle')
+        .attr('fill-opacity', 0)
+        .attr('cy', 63)
+        .attr('fill',
+          d =>
+            'url(#' +
+            encodeURIComponent(d.name)
+              .replace('\'', '%27')
+              .replace('(', '%28')
+              .replace(')', '%29') +
+            ')'
+        )
+        .attr('stroke-width', '0px')
+        .transition('a')
+        .delay(this.options.duration / 6)
+        .duration(this.options.duration * 5 / 6)
+        .attr('cx', d => this.xScale(this.xValue(d)) - 20)
+        .attr('cy', barHeight / 2 - 1)
+        .attr('r', barHeight)
+        .attr('fill-opacity', 1)
+    }
+
+    // 2. Animation exists
     let barUpdate = bar
       .transition('2')
       .duration(this.options.duration - 10)
@@ -607,10 +647,15 @@ class RankingBar {
       .duration(this.options.duration - 10)
       .attr('x', d => this.xScale(this.xValue(d)) + 10)
 
+    barUpdate
+      .select('circle')
+      .attr('cx', d => this.xScale(this.xValue(d)) - 20)
+
     this.avg = (Number(this.currentData[0]['value']) +
       Number(this.currentData[this.currentData.length - 1]['value'])
     ) / 2
 
+    // 3. Animation exit
     let barExit = bar
       .exit()
       .attr('fill-opacity', 1)
@@ -656,6 +701,7 @@ class RankingBar {
         return this.xScale(this.currentData[this.currentData.length - 1]['value'])
       })
     barExit.select('.label').attr('fill-opacity', 0)
+    barExit.select('circle').attr('fill-opacity', 0)
   }
 
   _change() {
