@@ -227,10 +227,9 @@ class RankingBar {
         if (this.options.init === 'start') {
           this.currentdate = this.time[0]
           this.getCurrentData(this.time[0])
-          // TODO: 一次动画的时间
           setTimeout(() => {
             this.emit('stop')
-          }, 1400)
+          }, this.options.duration)
         } else {
           this.emit('stop')
         }
@@ -241,7 +240,7 @@ class RankingBar {
       this.currentdate = this.time[this.nextIndex]
       this.getCurrentData(this.time[this.nextIndex])
       this.nextIndex++
-      this.playTimer = setTimeout(execute, this.baseTime * this.interval_time + 500)
+      this.playTimer = setTimeout(execute, this.options.duration + 200)
     }
 
     clearTimeout(this.playTimer)
@@ -388,14 +387,14 @@ class RankingBar {
 
         this.eventLabel.style('opacity', 0)
           .transition()
-          .duration(this.baseTime * this.interval_time)
+          .duration(this.options.duration)
           .ease(d3.easeLinear)
           .style('opacity', 1)
       } else if (this.isDateRanking) {
         this.eventLabel
           .data(this.currentData)
           .transition()
-          .duration(this.baseTime * this.interval_time)
+          .duration(this.options.duration)
           .ease(d3.easeLinear)
           .tween('text', function (d) {
             var self = this
@@ -416,7 +415,7 @@ class RankingBar {
     // xAxis ticks animations
     this.xAxisG
       .transition()
-      .duration(this.baseTime * this.interval_time)
+      .duration(this.options.duration)
       .ease(d3.easeLinear)
       .call(this.xAxis)
 
@@ -475,8 +474,8 @@ class RankingBar {
       })
       .style('fill', d => this._getColor(d))
       .transition('a')
-      .delay(500 * this.interval_time / 3)
-      .duration(2490 * this.interval_time / 3)
+      .delay(this.options.duration / 6)
+      .duration(this.options.duration * 5 / 6)
       .attr('y', 0)
       .attr('width', d => this.xScale(this.xValue(d)))
       .attr('fill-opacity', 1)
@@ -496,8 +495,8 @@ class RankingBar {
             : this.options.barLabel.fontColor
         )
         .transition('2')
-        .delay(500 * this.interval_time / 3)
-        .duration(2490 * this.interval_time / 3)
+        .delay(this.options.duration / 6)
+        .duration(this.options.duration * 5 / 6)
         .attr('fill-opacity', 1)
         .attr('y', 0)
         .attr('class', 'label')
@@ -524,8 +523,8 @@ class RankingBar {
         .style('font-weight', `${this.options.barInfo.fontWeight}`)
         .style('pointer-events', 'none')
         .transition()
-        .delay(500 * this.interval_time / 3)
-        .duration(2490 * this.interval_time / 3)
+        .delay(this.options.duration / 6)
+        .duration(this.options.duration * 5 / 6)
         .text(datum => this.options.barInfo.formatter(d3, datum))
         .attr('x', d => this.xScale(this.xValue(d)) - 10)
         .attr('fill-opacity', 1)
@@ -551,7 +550,7 @@ class RankingBar {
             : this.options.barValue.fontColor
         )
         .transition()
-        .duration(2990 * this.interval_time / 3)
+        .duration(this.options.duration - 10)
         .tween('text', function (d) {
           const self = this
           // Start from 0.9 * d.value
@@ -574,7 +573,7 @@ class RankingBar {
 
     let barUpdate = bar
       .transition('2')
-      .duration(2990 * this.interval_time / 3)
+      .duration(this.options.duration - 10)
       .ease(d3.easeLinear)
 
     barUpdate
@@ -605,7 +604,7 @@ class RankingBar {
           self.textContent = `${barValuePrefix}${value}${barValuePostfix}`
         }
       })
-      .duration(2990 * this.interval_time / 3)
+      .duration(this.options.duration - 10)
       .attr('x', d => this.xScale(this.xValue(d)) + 10)
 
     this.avg = (Number(this.currentData[0]['value']) +
@@ -616,7 +615,7 @@ class RankingBar {
       .exit()
       .attr('fill-opacity', 1)
       .transition()
-      .duration(2500 * this.interval_time / 3)
+      .duration(this.options.duration - 50)
 
     barExit
       .attr('transform', d => {
@@ -667,11 +666,7 @@ class RankingBar {
     this.g.selectAll('.bar')
       .data(this.currentData, d => d.name)
       .transition('1')
-      .duration(
-        this.isPlaying
-          ? this.baseTime * this.update_rate * this.interval_time
-          : this.baseTime * this.update_rate
-      )
+      .duration(this.options.duration)
       .attr('transform', d => {
         return 'translate(0, ' + (this.yScale(this.yValue(d)) + 10) + ')'
       })
