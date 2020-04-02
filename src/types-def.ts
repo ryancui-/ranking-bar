@@ -46,18 +46,7 @@ interface Options {
     tickFormatter: Function;
   },
   eventLabel: {
-    fontSize: number;
-    fontColor: string;
-    fontWeight: string;
-    formatter: Function;
-  },
-  eventTitle: {
-    fontSize: number;
-    fontColor: string;
-    fontWeight: string;
-    formatter: Function;
-  },
-  eventDesc: {
+    show: boolean;
     fontSize: number;
     fontColor: string;
     fontWeight: string;

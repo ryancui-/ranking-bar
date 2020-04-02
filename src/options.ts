@@ -28,22 +28,11 @@ const defaultOptions: Options = {
     tickFormatter: (d3, value) => d3.format('~s')(value).toUpperCase()
   },
   eventLabel: {
+    show: false,
     fontSize: 28,
     fontColor: '#2b2b2b',
     fontWeight: 'normal',
     formatter: (d3, datum) => datum.date
-  },
-  eventTitle: {
-    fontSize: 28,
-    fontColor: '#666',
-    fontWeight: 'normal',
-    formatter: (d3, datum) => datum.eventTitle
-  },
-  eventDesc: {
-    fontSize: 18,
-    fontColor: '#999',
-    fontWeight: 'normal',
-    formatter: (d3, datum) => datum.eventDesc
   },
   bar: {
     height: 'auto',

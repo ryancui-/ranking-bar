@@ -55,6 +55,10 @@ class RankingBar {
   isDateRanking: boolean
 
   eventLabel: any
+  eventTitle: any;
+  eventDesc: any;
+
+  cbs: object;
 
   constructor(dom: HTMLElement) {
     this.colorMapping = {}
@@ -86,6 +90,7 @@ class RankingBar {
     this.isPlaying = false
     this.dom = dom
     this.svg = d3.select(dom)
+    this.cbs = {}
 
     // Hacking... use this.$refs.dom will cause an error in Vue.js
     if (!this.svg._parents[0]) {
@@ -106,7 +111,6 @@ class RankingBar {
 
     // Merge default options
     this.options = deepMerge(defaultOptions, options) as Options
-    console.log(this.options)
 
     if (forceUpdate) {
       this.colorMapping = {}
@@ -152,8 +156,6 @@ class RankingBar {
         nameWidths.push(this.getComputedTextLength())
         this.remove()
       })
-
-    console.log(nameWidths)
 
     const paddingLeft = d3.max(nameWidths) + this.options.grid.left + 15
     this.innerWidth = width - paddingLeft - this.options.grid.right - 15
@@ -220,10 +222,17 @@ class RankingBar {
     const execute = () => {
       if (this.nextIndex >= this.time.length) {
         this.isPlaying = false
+        console.log('STOP HERE!!!')
         // Return to the first event
         if (this.options.init === 'start') {
           this.currentdate = this.time[0]
           this.getCurrentData(this.time[0])
+          // TODO: 一次动画的时间
+          setTimeout(() => {
+            this.emit('stop')
+          }, 1400)
+        } else {
+          this.emit('stop')
         }
         return
       }
@@ -247,7 +256,33 @@ class RankingBar {
     execute()
   }
 
+  /**
+   * Binding event
+   *
+   * @param event
+   * @param cb
+   */
+  on(event: string, cb: Function) {
+    if (!this.cbs[event]) this.cbs[event] = []
+    this.cbs[event].push(cb)
+  }
+
+  off(event: string, cb: Function) {
+    if (this.cbs[event]) {
+      this.cbs[event] = this.cbs[event].filter(_ => _ !== cb)
+    }
+  }
+
+  emit(event: string, params?: any) {
+    if (this.cbs[event]) {
+      for (let cb of this.cbs[event]) {
+        cb(params)
+      }
+    }
+  }
+
   getCurrentData(date) {
+    this.emit('eventTick', { date })
     this.rate = []
     this.currentData = []
     this.indexList = []
@@ -336,44 +371,46 @@ class RankingBar {
       .range([this.innerHeight, 0])
 
     // TODO: .enter() is preferable
-    const eventLabel = this.g.select('.eventLabel')
-    if (eventLabel.empty()) {
-      this.eventLabel = this.g.insert('text')
-        .data(this.currentdate)
-        .attr('class', 'eventLabel')
-        .attr('style:visibility', 'visible')
-        .attr('x', this.innerWidth - 5)
-        .attr('y', this.innerHeight - 5)
-        .style('fill', this.options.eventLabel.fontColor)
-        .style('font-size', `${this.options.eventLabel.fontSize}px`)
-        .style('font-weight', this.options.eventLabel.fontWeight)
-        .attr('text-anchor', 'end')
-        .text(this.currentdate)
+    if (this.options.eventLabel.show) {
+      const eventLabel = this.g.select('.eventLabel')
+      if (eventLabel.empty()) {
+        this.eventLabel = this.g.insert('text')
+          .data(this.currentdate)
+          .attr('class', 'eventLabel')
+          .attr('style:visibility', 'visible')
+          .attr('x', this.innerWidth - 5)
+          .attr('y', this.innerHeight - 5)
+          .style('fill', this.options.eventLabel.fontColor)
+          .style('font-size', `${this.options.eventLabel.fontSize}px`)
+          .style('font-weight', this.options.eventLabel.fontWeight)
+          .attr('text-anchor', 'end')
+          .text(this.currentdate)
 
-      this.eventLabel.style('opacity', 0)
-        .transition()
-        .duration(this.baseTime * this.interval_time)
-        .ease(d3.easeLinear)
-        .style('opacity', 1)
-    } else if (this.isDateRanking) {
-      this.eventLabel
-        .data(this.currentData)
-        .transition()
-        .duration(this.baseTime * this.interval_time)
-        .ease(d3.easeLinear)
-        .tween('text', function (d) {
-          var self = this
-          var i = d3.interpolateDate(
-            new Date(self.textContent),
-            new Date(d.date)
-          )
-          const formatFunc = d3.timeFormat('%Y-%m-%d')
-          return function (t) {
-            self.textContent = formatFunc(i(t))
-          }
-        })
-    } else {
-      this.eventLabel.text(this.currentdate)
+        this.eventLabel.style('opacity', 0)
+          .transition()
+          .duration(this.baseTime * this.interval_time)
+          .ease(d3.easeLinear)
+          .style('opacity', 1)
+      } else if (this.isDateRanking) {
+        this.eventLabel
+          .data(this.currentData)
+          .transition()
+          .duration(this.baseTime * this.interval_time)
+          .ease(d3.easeLinear)
+          .tween('text', function (d) {
+            var self = this
+            var i = d3.interpolateDate(
+              new Date(self.textContent),
+              new Date(d.date)
+            )
+            const formatFunc = d3.timeFormat('%Y-%m-%d')
+            return function (t) {
+              self.textContent = formatFunc(i(t))
+            }
+          })
+      } else {
+        this.eventLabel.text(this.currentdate)
+      }
     }
 
     // xAxis ticks animations
@@ -382,12 +419,19 @@ class RankingBar {
       .duration(this.baseTime * this.interval_time)
       .ease(d3.easeLinear)
       .call(this.xAxis)
+
     this.xAxisG.selectAll('.tick > text')
       .style('font-size', `${this.options.xAxis.fontSize}px`)
       .style('font-weight', this.options.xAxis.fontWeight)
       .style('fill', this.options.xAxis.fontColor)
 
-    this.xAxisG.selectAll('.tick > line').style('stroke', this.options.xAxis.tickColor)
+    this.xAxisG.selectAll('.tick > line')
+      .style('stroke', this.options.xAxis.tickColor)
+    if (this.options.xAxis.tickType === 'dashed') {
+      this.xAxisG.selectAll('.tick > line')
+        .style('stroke-dasharray', '5')
+    }
+
     this.xAxisG.select('.domain').remove()
 
     const bar = this.g.selectAll('.bar').data(this.currentData, d => d.name)
