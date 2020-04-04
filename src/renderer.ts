@@ -55,8 +55,7 @@ class RankingBar {
   isDateRanking: boolean
 
   eventLabel: any
-  eventTitle: any
-  eventDesc: any
+  gradientDefs: any;
 
   cbs: object
 
@@ -115,6 +114,18 @@ class RankingBar {
     if (forceUpdate) {
       this.colorMapping = {}
     }
+
+    // If use gradient color...
+    this.gradientDefs = this.svg.append('defs')
+    this.options.color.forEach((color, index) => {
+      if (Array.isArray(color)) {
+        const gradient = this.gradientDefs.append('linearGradient')
+          .attr('id', `gradient_${index}`)
+
+        gradient.append('stop').attr('offset', '0%').attr('stop-color', color[0])
+        gradient.append('stop').attr('offset', '100%').attr('stop-color', color[1])
+      }
+    })
 
     this.data = this.options.data.slice(0)
     this.date = []
@@ -291,24 +302,6 @@ class RankingBar {
         this.currentData.push(element)
       }
     })
-
-    // this.rate['MAX_RATE'] = 0
-    // this.rate['MIN_RATE'] = 1
-    // this.currentData.forEach(e => {
-    //   this.lastData.forEach(el => {
-    //     if (el.name == e.name) {
-    //       this.rate[e.name] = Number(Number(e.value) - Number(el.value))
-    //     }
-    //   })
-    //   if (!this.rate[e.name]) {
-    //     this.rate[e.name] = this.rate['MIN_RATE']
-    //   }
-    //   if (this.rate[e.name] > this.rate['MAX_RATE']) {
-    //     this.rate['MAX_RATE'] = this.rate[e.name]
-    //   } else if (this.rate[e.name] < this.rate['MIN_RATE']) {
-    //     this.rate['MIN_RATE'] = this.rate[e.name]
-    //   }
-    // })
     this.currentData = this.currentData.slice(0, this.options.rankingCount)
     this._dataSort()
 
@@ -319,11 +312,16 @@ class RankingBar {
   }
 
   _getColor(d) {
-    // TODO: Give default calor if no options.color provided
-    return this.colorMapping[d.type] || (
-      this.colorMapping[d.type] = this.options.color
-        [Object.keys(this.colorMapping).length % this.options.color.length]
-    )
+    if (this.colorMapping[d.type]) {
+      return this.colorMapping[d.type]
+    }
+
+    const newIndex = Object.keys(this.colorMapping).length % this.options.color.length
+    if (Array.isArray(this.options.color[newIndex])) {
+      return this.colorMapping[d.type] = `url(#gradient_${newIndex})`
+    } else {
+      return this.colorMapping[d.type] = this.options.color[newIndex]
+    }
   }
 
   _dataSort() {
@@ -471,6 +469,9 @@ class RankingBar {
       })
       .on('mouseout', d => {
         this.tooltip.style('visibility', 'hidden')
+      })
+      .on('click', datum => {
+        this.emit('click', { datum })
       })
       .style('fill', d => this._getColor(d))
       .transition('a')
