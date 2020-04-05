@@ -55,9 +55,10 @@ class RankingBar {
   isDateRanking: boolean
 
   eventLabel: any
-  gradientDefs: any;
+  gradientDefs: any
 
   cbs: object
+  nameWidths: object
 
   constructor(dom: HTMLElement) {
     this.colorMapping = {}
@@ -155,7 +156,7 @@ class RankingBar {
     const height = this.svg.attr('height')
 
     // grid.left is calculated by max(nameList[].length)
-    const nameWidths: string[] = []
+    const nameWidths = this.nameWidths = {}
     this.svg.append('g')
       .selectAll('.dummyText')
       .data(this.names)
@@ -163,12 +164,13 @@ class RankingBar {
       .append('text')
       .attr('font-size', this.options.barLabel.fontSize + 'px')
       .text(d => d)
-      .each(function () {
-        nameWidths.push(this.getComputedTextLength())
+      .each(function (text) {
+        nameWidths[text] = this.getComputedTextLength()
         this.remove()
       })
 
-    const paddingLeft = d3.max(nameWidths) + this.options.grid.left + 15
+    console.log(nameWidths)
+    const paddingLeft = d3.max(Object.values(this.nameWidths)) + this.options.grid.left + 15
     this.innerWidth = width - paddingLeft - this.options.grid.right - 15
     this.innerHeight = height - this.options.grid.top - this.options.grid.bottom - 30
     this.xValue = d => Number(d.value)
@@ -251,7 +253,7 @@ class RankingBar {
       this.currentdate = this.time[this.nextIndex]
       this.getCurrentData(this.time[this.nextIndex])
       this.nextIndex++
-      this.playTimer = setTimeout(execute, this.options.duration + 200)
+      this.playTimer = setTimeout(execute, this.options.duration)
     }
 
     clearTimeout(this.playTimer)
@@ -447,6 +449,20 @@ class RankingBar {
       barHeight = Number(this.options.bar.height)
     }
 
+    // Find out image offset and barInfo offset
+    const imgOffsets: object = {}
+    const barInfoOffsets: object = {}
+    this.names.forEach(name => {
+      const hasImage = this.options.imgMapping.find(_ => _.name === name)
+      if (hasImage) {
+        imgOffsets[name] = 10
+        barInfoOffsets[name] = 10 + 2 * barHeight + 4
+      } else {
+        imgOffsets[name] = 0
+        barInfoOffsets[name] = 10
+      }
+    })
+
     const barValuePrefix = this.options.barValue.prefix
     const barValuePostfix = this.options.barValue.postfix
 
@@ -520,19 +536,29 @@ class RankingBar {
         .attr('y', 50)
         .attr('stroke-width', '0px')
         .attr('fill-opacity', 0)
-        .style('font-size', `${this.options.barInfo.fontSize}px`)
+        .attr('opacity', 0)
+        .style('font-size', `${
+          this.options.barInfo.fontSize === 0
+            ? barHeight * 1.2
+            : this.options.barInfo.fontSize}px`
+        )
         .style('font-weight', `${this.options.barInfo.fontWeight}`)
         .style('pointer-events', 'none')
         .transition()
         .delay(this.options.duration / 6)
         .duration(this.options.duration * 5 / 6)
         .text(datum => this.options.barInfo.formatter(d3, datum))
-        .attr('x', d => this.xScale(this.xValue(d)) - 10)
+        .attr('x', datum => this.xScale(this.xValue(datum)) - barInfoOffsets[datum.name])
         .attr('fill-opacity', 1)
+        .attr('opacity', datum =>
+          (this.xScale(this.xValue(datum)) - barInfoOffsets[datum.name] - this.nameWidths[datum.name]) > 0
+            ? 1
+            : 0
+        )
         .attr('y', barHeight / 2)
-        .attr('dy', '0.2em')
+        .attr('dy', '0.35em')
         .attr('text-anchor', 'end')
-        .attr('stroke-width', '2px')
+        .attr('stroke-width', '1px')
         .attr('paint-order', 'stroke')
     }
 
@@ -605,7 +631,7 @@ class RankingBar {
         .transition('a')
         .delay(this.options.duration / 6)
         .duration(this.options.duration * 5 / 6)
-        .attr('cx', d => this.xScale(this.xValue(d)) - 20)
+        .attr('cx', datum => this.xScale(this.xValue(datum)) - imgOffsets[datum.name] - barHeight)
         .attr('cy', barHeight / 2 - 1)
         .attr('r', barHeight)
         .attr('fill-opacity', 1)
@@ -622,10 +648,15 @@ class RankingBar {
       .style('fill', d => this._getColor(d))
       .attr('width', d => this.xScale(this.xValue(d)))
 
-    // TODO: too long bar info should be avoided
+    // too long bar info should be avoided
     barInfo = barUpdate
       .select('.barInfo')
-      .attr('x', d => this.xScale(this.xValue(d)) - 10)
+      .attr('x', d => this.xScale(this.xValue(d)) - barInfoOffsets[d.name])
+      .attr('opacity', datum =>
+        (this.xScale(this.xValue(datum)) - barInfoOffsets[datum.name] - this.nameWidths[datum.name]) > 0
+          ? 1
+          : 0
+      )
 
     barUpdate
       .select('.value')
@@ -650,7 +681,7 @@ class RankingBar {
 
     barUpdate
       .select('circle')
-      .attr('cx', d => this.xScale(this.xValue(d)) - 20)
+      .attr('cx', d => this.xScale(this.xValue(d)) - imgOffsets[d.name] - barHeight)
 
     this.avg = (Number(this.currentData[0]['value']) +
       Number(this.currentData[this.currentData.length - 1]['value'])
@@ -665,12 +696,6 @@ class RankingBar {
 
     barExit
       .attr('transform', d => {
-        // if (this.always_up) {
-        //   return 'translate(0,' + '-100' + ')'
-        // }
-        // if (Number(d.value) > this.avg && this.allow_up) {
-        //   return 'translate(0,' + '-100' + ')'
-        // }
         // Always drop out
         return 'translate(0, 1000)'
       })

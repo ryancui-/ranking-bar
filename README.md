@@ -1,8 +1,12 @@
 # Ranking Bar
 
+**NOTE:** It is still under-developing.
+
 Use it the same as ECharts.
 
 > This project is based on https://github.com/Jannchie/Historical-ranking-data-visualization-based-on-d3.js, thanks for your ideas.
+
+Though, this project has many different configuration than the original due to my requirement, perhaps not suitable for your case, please read about the `Options` chapter for more information.
 
 ## Install
 
@@ -26,12 +30,14 @@ Then, initialize like ECharts:
 import { RankingBar } from '@ryc/ranking-bar'
 
 const dom = document.getElementById('chart')
-const options = {}  // Options, see below~
-const data = []     // Data, see below~
+const options = {}  // Options, like echarts
 
-const instance = new RankingBar(dom, options)
+const instance = new RankingBar(dom)
 
-instance.render(data)
+// Now the graph is rendered
+instance.render(options)
+
+// Start animations
 instance.play()
 ```
 
