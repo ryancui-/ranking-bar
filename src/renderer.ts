@@ -50,7 +50,7 @@ class RankingBar {
   isDateRanking: boolean
 
   eventLabel: any
-  gradientDefs: any
+  defs: any
 
   cbs: object
   nameWidths: object
@@ -104,16 +104,24 @@ class RankingBar {
     }
 
     // If use gradient color...
-    this.gradientDefs = this.svg.append('defs')
+    this.defs = this.svg.append('defs')
     this.options.color.forEach((color, index) => {
       if (Array.isArray(color)) {
-        const gradient = this.gradientDefs.append('linearGradient')
+        const gradient = this.defs.append('linearGradient')
           .attr('id', `gradient_${index}`)
 
         gradient.append('stop').attr('offset', '0%').attr('stop-color', color[0])
         gradient.append('stop').attr('offset', '100%').attr('stop-color', color[1])
       }
     })
+    if (this.options.barImage.show) {
+      const imageShadow = this.defs.append('filter').attr('id', 'image-shadow')
+      imageShadow.append('feDropShadow')
+        .attr('dx', this.options.barImage.shadowOffsetX)
+        .attr('dy', this.options.barImage.shadowOffsetY)
+        .attr('stdDeviation', this.options.barImage.shadowBlur / 2)
+        .attr('flood-color', this.options.barImage.shadowColor)
+    }
 
     this.data = this.options.data.slice(0)
     this.date = []
@@ -580,7 +588,7 @@ class RankingBar {
         .attr('dy', '0.35em')
     }
 
-    if (this.options.imgMapping.length > 0) {
+    if (this.options.barImage.show) {
       barEnter
         .append('defs')
         .append('pattern')
@@ -609,7 +617,9 @@ class RankingBar {
               .replace(')', '%29') +
             ')'
         )
-        .attr('stroke-width', '0px')
+        .attr('stroke-width', `${this.options.barImage.borderWidth}px`)
+        .attr('stroke', this.options.barImage.borderColor)
+        .style('filter', 'url(#image-shadow)')
         .transition('a')
         .delay(this.options.duration / 6)
         .duration(this.options.duration * 5 / 6)
@@ -617,6 +627,7 @@ class RankingBar {
         .attr('cy', barHeight / 2 - 1)
         .attr('r', barHeight)
         .attr('fill-opacity', 1)
+        .style('opacity', datum => this.options.imgMapping.find(_ => _.name === datum.name) ? 1 : 0)
     }
 
     // 2. Animation exists
