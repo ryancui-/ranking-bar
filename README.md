@@ -41,24 +41,6 @@ instance.render(options)
 instance.play()
 ```
 
-### Data Format
-
-```js
-const data = [{
-  date: '2020-01-01',
-  name: 'Chinese',
-  value: 12000
-}, {
-  date: '2020-01-01',
-  name: 'English',
-  value: 14000
-}, {
-  date: '2020-01-01',
-  name: 'Russian',
-  value: 42000
-}]
-```
-
 ### Options
 
 ```js
@@ -71,7 +53,7 @@ const options = {
 
 ```js
 // Render the chart
-instance.render(data)
+instance.render(options)
 
 // Start the animation from the beginning
 instance.play()

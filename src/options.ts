@@ -3,7 +3,6 @@ import { Options } from './types-def'
 const defaultOptions: Options = {
   data: [],
   imgMapping: [],
-  eventMapping: [],
   color: [],
   duration: 1000,
   init: 'start',
@@ -59,6 +58,15 @@ const defaultOptions: Options = {
     fontWeight: 'normal',
     prefix: '',
     postfix: ''
+  },
+  barImage: {
+    show: false,
+    borderColor: 'transparent',
+    borderWidth: 0,
+    shadowOffsetX: 0,
+    shadowOffsetY: 0,
+    shadowBlur: 0,
+    shadowColor: 'transparent'
   }
 }
 

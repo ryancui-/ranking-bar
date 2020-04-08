@@ -10,18 +10,11 @@ interface ImgMapping {
   img: string;
 }
 
-interface EventMapping {
-  date: string;
-  eventTitle: string;
-  eventDesc: string;
-}
-
 type RankingBarData = Serie[]
 
 interface Options {
   data: RankingBarData;
   imgMapping: ImgMapping[];
-  eventMapping: EventMapping[];
   color: (string | string[])[];
   duration: number;
   init: 'start' | 'end';
@@ -77,6 +70,15 @@ interface Options {
     fontWeight: string;
     prefix: string;
     postfix: string;
+  },
+  barImage: {
+    show: boolean;
+    borderColor: string;
+    borderWidth: number;
+    shadowOffsetX: number;
+    shadowOffsetY: number;
+    shadowBlur: number;
+    shadowColor: string;
   }
 }
 

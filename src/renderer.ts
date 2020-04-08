@@ -28,11 +28,6 @@ class RankingBar {
 
   svg: any
   reverse: boolean
-  interval_time: number
-  big_value: boolean
-  update_rate: number
-  showLabel: boolean
-  format: string
   isPlaying: boolean
   dom: HTMLElement
   innerWidth: number
@@ -78,14 +73,6 @@ class RankingBar {
 
     // Old config
     this.reverse = false
-    this.interval_time = 1.5
-
-    this.big_value = false
-    this.update_rate = 0.5
-
-    this.showLabel = true
-
-    this.format = ',.0f'
 
     this.isPlaying = false
     this.dom = dom
@@ -169,7 +156,6 @@ class RankingBar {
         this.remove()
       })
 
-    console.log(nameWidths)
     const paddingLeft = d3.max(Object.values(this.nameWidths)) + this.options.grid.left + 15
     this.innerWidth = width - paddingLeft - this.options.grid.right - 15
     this.innerHeight = height - this.options.grid.top - this.options.grid.bottom - 30
@@ -190,7 +176,6 @@ class RankingBar {
 
     this.xAxis = d3
       .axisBottom()
-      // .ticks(this.options.xAxis.tickCount)
       .tickPadding(20)
       .tickFormat(v => this.options.xAxis.tickFormatter(d3, v))
       .tickSize(-this.innerHeight)
@@ -313,16 +298,22 @@ class RankingBar {
     this.lastData = this.currentData
   }
 
-  _getColor(d) {
-    if (this.colorMapping[d.type]) {
-      return this.colorMapping[d.type]
+  _getColor(d, single = false) {
+    if (this.colorMapping[d.type] !== undefined) {
+      const index = this.colorMapping[d.type]
+      return Array.isArray(this.options.color[index])
+        ? single
+          ? this.options.color[index][1]
+          : `url(#gradient_${index})`
+        : this.options.color[index]
     }
 
     const newIndex = Object.keys(this.colorMapping).length % this.options.color.length
+    this.colorMapping[d.type] = newIndex
     if (Array.isArray(this.options.color[newIndex])) {
-      return this.colorMapping[d.type] = `url(#gradient_${newIndex})`
+      return `url(#gradient_${newIndex})`
     } else {
-      return this.colorMapping[d.type] = this.options.color[newIndex]
+      return this.options.color[newIndex]
     }
   }
 
@@ -350,19 +341,10 @@ class RankingBar {
     if (this.currentData.length === 0) return
 
     // Control xAxis domain/range
-    if (this.big_value) {
-      this.xScale
-        .domain([
-          2 * d3.min(this.currentData, this.xValue) - d3.max(this.currentData, this.xValue),
-          d3.max(this.currentData, this.xValue) + 10
-        ])
-        .range([0, this.innerWidth])
-    } else {
-      this.xScale
-        .domain([0, d3.max(this.currentData, this.xValue)])
-        .range([0, this.innerWidth])
-        .nice()
-    }
+    this.xScale
+      .domain([0, d3.max(this.currentData, this.xValue)])
+      .range([0, this.innerWidth])
+      .nice()
 
     // Control yAxis domain/range
     this.yScale
@@ -530,7 +512,7 @@ class RankingBar {
       barEnter
         .append('text')
         .attr('x', 0)
-        .attr('stroke', d => this._getColor(d))
+        .attr('stroke', d => this._getColor(d, true))
         .attr('fill', this.options.barInfo.fontColor)
         .attr('class', 'barInfo')
         .attr('y', 50)
@@ -573,7 +555,7 @@ class RankingBar {
         .style('font-weight', `${this.options.barValue.fontWeight}`)
         .style('fill', d =>
           this.options.barValue.fontColor === '='
-            ? this._getColor(d)
+            ? this._getColor(d, true)
             : this.options.barValue.fontColor
         )
         .transition()
