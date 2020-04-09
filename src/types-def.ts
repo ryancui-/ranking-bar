@@ -2,7 +2,7 @@ interface Serie {
   date: string;
   name: string;
   type: string;
-  value: string;
+  value: string | number;
 }
 
 interface ImgMapping {

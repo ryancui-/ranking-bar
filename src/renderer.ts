@@ -317,20 +317,16 @@ class RankingBar {
     execute()
   }
 
-  /**
-   * Binding event
-   *
-   * @param event
-   * @param cb
-   */
   on(event: string, cb: Function) {
     if (!this.cbs[event]) this.cbs[event] = []
     this.cbs[event].push(cb)
   }
 
-  off(event: string, cb: Function) {
+  off(event: string, cb: Function = undefined) {
     if (this.cbs[event]) {
-      this.cbs[event] = this.cbs[event].filter(_ => _ !== cb)
+      this.cbs[event] = cb
+        ? this.cbs[event].filter(_ => _ !== cb)
+        : []
     }
   }
 

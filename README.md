@@ -1,6 +1,6 @@
 # Ranking Bar
 
-**NOTE:** It is still under-developing.
+[简体中文](https://github.com/ryancui-/ranking-bar/blob/master/README-zh.md)
 
 Use it the same as ECharts.
 
@@ -11,10 +11,10 @@ Though, this project has many different configuration than the original due to m
 ## Install
 
 ```bash
-npm install -S @ryc/ranking-bar
+npm install -S @ryancui-/ranking-bar
 ```
 
-**ATTENTION**, you need to ensure variable `d3` is avaliable(v5) and currently this repo just provides the source code version.
+**ATTENTION**, you need to ensure the global variable `d3` is avaliable(v5).
 
 ## Usage
 
@@ -27,7 +27,7 @@ First, You need a `<svg>` element with specific height and width. Besides, `view
 Then, initialize like ECharts:
 
 ```js
-import { RankingBar } from '@ryc/ranking-bar'
+import { RankingBar } from '@ryancui-/ranking-bar'
 
 const dom = document.getElementById('chart')
 const options = {}  // Options, like echarts
