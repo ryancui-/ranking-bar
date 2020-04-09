@@ -54,6 +54,11 @@ class RankingBar {
 
   cbs: object
   nameWidths: object
+  barInfoNameWidths: object
+  barHeight: number
+  imgOffsets: object
+  barInfoOffsets: object
+  barInfoFontSize: number
 
   constructor(dom: HTMLElement) {
     this.colorMapping = {}
@@ -102,8 +107,11 @@ class RankingBar {
     if (forceUpdate) {
       this.colorMapping = {}
     }
+    if (this.options.data.length === 0) {
+      return
+    }
 
-    // If use gradient color...
+    // If use gradient color
     this.defs = this.svg.append('defs')
     this.options.color.forEach((color, index) => {
       if (Array.isArray(color)) {
@@ -114,6 +122,8 @@ class RankingBar {
         gradient.append('stop').attr('offset', '100%').attr('stop-color', color[1])
       }
     })
+
+    // Image shadow
     if (this.options.barImage.show) {
       const imageShadow = this.defs.append('filter').attr('id', 'image-shadow')
       imageShadow.append('feDropShadow')
@@ -134,6 +144,9 @@ class RankingBar {
       }
     })
 
+    // Find all type in origin order in data, and cached the color
+    this.data.forEach(element => this._getColor(element))
+
     this.time = this.date
     // Whether to enable cornerLabel date animation
     this.isDateRanking = this.time.every(_ => /\d{4}-\d{2}-\d{2}/.test(_))
@@ -150,7 +163,7 @@ class RankingBar {
     const width = this.svg.attr('width')
     const height = this.svg.attr('height')
 
-    // grid.left is calculated by max(nameList[].length)
+    // barLabel nameWidths
     const nameWidths = this.nameWidths = {}
     this.svg.append('g')
       .selectAll('.dummyText')
@@ -164,11 +177,54 @@ class RankingBar {
         this.remove()
       })
 
+    // The exact number of bars
+    const maxBarCount = d3.min(this.names.length, this.options.rankingCount)
+
     const paddingLeft = d3.max(Object.values(this.nameWidths)) + this.options.grid.left + 15
     this.innerWidth = width - paddingLeft - this.options.grid.right - 15
     this.innerHeight = height - this.options.grid.top - this.options.grid.bottom - 30
+
     this.xValue = d => Number(d.value)
     this.yValue = d => d.name
+
+    // Calculate barHeight and barInfoNameWidths
+    if (this.options.bar.height === 'auto') {
+      this.barHeight = d3.min([this.innerHeight / (maxBarCount + 2), 12])
+    } else {
+      this.barHeight = Number(this.options.bar.height)
+    }
+
+    // Find out image offset and barInfo offset
+    this.imgOffsets = {}
+    this.barInfoOffsets = {}
+    this.names.forEach(name => {
+      const hasImage = this.options.imgMapping.find(_ => _.name === name)
+      if (hasImage) {
+        this.imgOffsets[name] = 10
+        this.barInfoOffsets[name] = 10 + 2 * this.barHeight + 4
+      } else {
+        this.imgOffsets[name] = 0
+        this.barInfoOffsets[name] = 10
+      }
+    })
+
+    this.barInfoFontSize = this.options.barInfo.fontSize === 0
+      ? this.barHeight * 1.3
+      : this.options.barInfo.fontSize
+
+    // Caculate barInfoNameWidths
+    const barInfoNameWidths = this.barInfoNameWidths = {}
+    this.svg.append('g')
+      .selectAll('.dummyText')
+      .data(this.names)
+      .enter()
+      .append('text')
+      .attr('font-size', `${this.barInfoFontSize}px`)
+      .text(d => d)
+      .each(function (text) {
+        barInfoNameWidths[text] = this.getComputedTextLength()
+        this.remove()
+      })
 
     this.g = this.svg
       .append('g')
@@ -425,36 +481,20 @@ class RankingBar {
 
     const bar = this.g.selectAll('.bar').data(this.currentData, d => d.name)
 
+    const barHeight = this.barHeight
+    const imgOffsets = this.imgOffsets
+    const barInfoOffsets = this.barInfoOffsets
+
+    const barValuePrefix = this.options.barValue.prefix
+    const barValuePostfix = this.options.barValue.postfix
+    const barInfoFontSize = this.barInfoFontSize
+
     // 1. Animation from (0 ~ Exists)
     const barEnter = bar
       .enter()
       .insert('g')
       .attr('class', 'bar')
       .attr('transform', d => 'translate(0, ' + (this.yScale(this.yValue(d)) + 10) + ')')
-
-    let barHeight
-    if (this.options.bar.height === 'auto') {
-      barHeight = d3.min([this.innerHeight / (this.currentData.length + 2), 12])
-    } else {
-      barHeight = Number(this.options.bar.height)
-    }
-
-    // Find out image offset and barInfo offset
-    const imgOffsets: object = {}
-    const barInfoOffsets: object = {}
-    this.names.forEach(name => {
-      const hasImage = this.options.imgMapping.find(_ => _.name === name)
-      if (hasImage) {
-        imgOffsets[name] = 10
-        barInfoOffsets[name] = 10 + 2 * barHeight + 4
-      } else {
-        imgOffsets[name] = 0
-        barInfoOffsets[name] = 10
-      }
-    })
-
-    const barValuePrefix = this.options.barValue.prefix
-    const barValuePostfix = this.options.barValue.postfix
 
     barEnter
       .append('rect')
@@ -527,11 +567,7 @@ class RankingBar {
         .attr('stroke-width', '0px')
         .attr('fill-opacity', 0)
         .attr('opacity', 0)
-        .style('font-size', `${
-          this.options.barInfo.fontSize === 0
-            ? barHeight * 1.2
-            : this.options.barInfo.fontSize}px`
-        )
+        .style('font-size', `${barInfoFontSize}px`)
         .style('font-weight', `${this.options.barInfo.fontWeight}`)
         .style('pointer-events', 'none')
         .transition()
@@ -541,7 +577,7 @@ class RankingBar {
         .attr('x', datum => this.xScale(this.xValue(datum)) - barInfoOffsets[datum.name])
         .attr('fill-opacity', 1)
         .attr('opacity', datum =>
-          (this.xScale(this.xValue(datum)) - barInfoOffsets[datum.name] - this.nameWidths[datum.name]) > 0
+          (this.xScale(this.xValue(datum)) - barInfoOffsets[datum.name] - this.barInfoNameWidths[datum.name]) > 0
             ? 1
             : 0
         )
@@ -646,7 +682,7 @@ class RankingBar {
       .select('.barInfo')
       .attr('x', d => this.xScale(this.xValue(d)) - barInfoOffsets[d.name])
       .attr('opacity', datum =>
-        (this.xScale(this.xValue(datum)) - barInfoOffsets[datum.name] - this.nameWidths[datum.name]) > 0
+        (this.xScale(this.xValue(datum)) - barInfoOffsets[datum.name] - this.barInfoNameWidths[datum.name]) > 0
           ? 1
           : 0
       )
