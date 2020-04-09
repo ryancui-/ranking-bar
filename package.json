@@ -1,5 +1,5 @@
 {
-  "name": "@ryc/ranking-bar",
+  "name": "@ryancui-/ranking-bar",
   "version": "0.0.1",
   "description": "Ranking Bar Visualization based on d3.js",
   "main": "lib/index.esm.js",
