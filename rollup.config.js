@@ -1,4 +1,5 @@
 import typescript from 'rollup-plugin-typescript'
+import { terser } from "rollup-plugin-terser"
 
 export default {
   input: './src/main.ts',
@@ -6,7 +7,8 @@ export default {
     typescript({
       exclude: 'node_modules/**',
       typescript: require('typescript')
-    })
+    }),
+    terser()
   ],
   output: [{
     format: 'cjs',
@@ -14,5 +16,9 @@ export default {
   }, {
     format: 'es',
     file: 'lib/index.esm.js'
+  }, {
+    format: 'umd',
+    file: 'lib/index.umd.js',
+    name: 'RankingBar'
   }]
 }

@@ -4,7 +4,7 @@
 
 > 这个包主要对 https://github.com/Jannchie/Historical-ranking-data-visualization-based-on-d3.js 做了一层封装，并根据我自己项目的需要增删改了不少配置项，请根据需要使用。
 
-更多配置项请阅读 `Options` 章节。
+更多配置项请阅读 `选项` 章节。
 
 ## 安装
 
@@ -12,7 +12,7 @@
 npm install -S @ryancui-/ranking-bar
 ```
 
-**注意：**必须保证有 `d3` 全局变量（v5 版本），这个包没有提供 `d3` 的依赖。
+**注意**: 必须保证有 `d3` 全局变量（v5 版本），这个包没有提供 `d3` 的依赖。
 
 你可以通过 CDN 或 npm 包等方法获取 D3.js，然后放到全局变量中，如
 
@@ -36,14 +36,12 @@ window.d3 = d3
 import { RankingBar } from '@ryancui-/ranking-bar'
 
 const dom = document.getElementById('chart')
-const options = {}  // Options, like echarts
+const options = { /*...*/ }
 
 const instance = new RankingBar(dom)
 
-// Now the graph is rendered
 instance.render(options)
 
-// Start animations
 instance.play()
 ```
 
@@ -195,7 +193,7 @@ instance.on('click', (params) => {})
 instance.off('click')
 ```
 
-#### `click` 事件
+#### `click`
 
 点击柱子时触发。
 
@@ -205,7 +203,7 @@ instance.on('click', ({ datum: Serie }) => {
 })
 ```
 
-#### `eventTick` 事件
+#### `eventTick`
 
 开始下一个时间切片动画时触发，常用于外部状态协同。
 
@@ -215,7 +213,7 @@ instance.on('eventTick', ({ date: string }) => {
 })
 ```
 
-#### `stop` 事件
+#### `stop`
 
 动画播放结束事件。
 
